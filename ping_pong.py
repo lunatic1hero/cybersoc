@@ -50,18 +50,5 @@ def convert_to_xml(data):
     # Example: Set exportTime to current time
     import datetime
     export_time = datetime.datetime.now().strftime("%a %b %d %H:%M:%S %Z %Y")
-    items.set('exportTime', export_time)
+    items.set('exportTime
 
-    for entry in data:
-        item = ET.SubElement(items, 'item')
-
-        time_elem = ET.SubElement(item, 'time')
-        time_elem.text = entry['time']
-
-        url_elem = ET.SubElement(item, 'url')
-        url_elem.text = entry['url']
-
-        host_elem = ET.SubElement(item, 'host')
-        host_elem.text = entry['host']
-        if entry['host']:
-            host_e
