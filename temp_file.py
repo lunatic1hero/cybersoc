@@ -1,6 +1,7 @@
 import json
 import csv
 import re
+import urllib.parse
 
 har_file = 'tester_of.har'  # Replace with your HAR file path
 
@@ -110,8 +111,11 @@ def detect_xss_payload(request_body, xss_patterns):
     '''
     Detects XSS payloads in the request body using specified patterns.
     '''
+    # Decode URL-encoded payloads in the request body
+    decoded_body = urllib.parse.unquote(request_body)
+
     for pattern in xss_patterns:
-        if re.search(pattern, request_body):
+        if re.search(pattern, decoded_body, re.IGNORECASE):
             return 1
     return 0
 
