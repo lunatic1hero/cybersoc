@@ -57,26 +57,21 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     # Check for XSS payload
     if request_body:
         xss_patterns = [
-            r'<script[^>]*?>',        # <script>
-            r'onmouseover\s*=',       # onmouseover=
-            r'onerror\s*=',           # onerror=
-            r'onload\s*=',            # onload=
-            r'javascript:',           # javascript:
-            r'alert\(',               # alert(
-            r'confirm\(',             # confirm(
-            r'prompt\(',              # prompt(
-            r'document\.cookie',      # document.cookie
-            r'document\.location',    # document.location
-            r'window\.location',      # window.location
-            r'eval\(',                # eval(
-            r'setTimeout\(',          # setTimeout(
-            r'setInterval\(',         # setInterval(
-            r'execCommand',           # execCommand
-            r'innerHTML',             # innerHTML
-            r'outerHTML',             # outerHTML
-            r'document\.write',       # document.write
-            r'XMLHttpRequest\.open',  # XMLHttpRequest.open
-            r'FormData\.append',      # FormData.append
+            r'<script',                # <script
+            r'alert\(',                # alert(
+            r'\(alert\(',              # (alert(
+            r'</script>',              # </script>
+            r'document\.cookie',       # document.cookie
+            r'eval\(',                 # eval(
+            r'window\.location',       # window.location
+            r'setTimeout\(',           # setTimeout(
+            r'setInterval\(',          # setInterval(
+            r'execCommand',            # execCommand
+            r'innerHTML',              # innerHTML
+            r'outerHTML',              # outerHTML
+            r'document\.write',        # document.write
+            r'XMLHttpRequest\.open',   # XMLHttpRequest.open
+            r'FormData\.append',       # FormData.append
             r'document\.getElementById',  # document.getElementById
             r'document\.createElement',   # document.createElement
             r'document\.execCommand',     # document.execCommand
@@ -90,9 +85,6 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
             r'document\.referrer',        # document.referrer
             r'navigator\.sendBeacon',     # navigator.sendBeacon
             r'importScripts',             # importScripts
-            r'alert`',                    # alert`
-            r'confirm`',                  # confirm`
-            r'prompt`',                   # prompt`
             r'`',                         # `
         ]
         features['has_xss_payload'] = detect_xss_payload(request_url.lower(), request_body.lower(), xss_patterns)
@@ -121,6 +113,44 @@ def detect_xss_payload(request_url, request_body, xss_patterns):
             return 1
     return 0
 
+def detect_sqli_payload(request_url, request_body):
+    '''
+    Detects SQLi payloads in the request URL and body using specified patterns.
+    '''
+    # Decode URL-encoded payloads in the request URL and body
+    decoded_url = urllib.parse.unquote(request_url)
+    decoded_body = urllib.parse.unquote(request_body)
+
+    # SQL injection patterns
+    sqli_patterns = [
+        r'\bSELECT\b.*?\bFROM\b',       # SELECT ... FROM ...
+        r'\bINSERT INTO\b',             # INSERT INTO ...
+        r'\bUPDATE\b.*?\bSET\b',        # UPDATE ... SET ...
+        r'\bDELETE FROM\b',             # DELETE FROM ...
+        r'\bDROP TABLE\b',              # DROP TABLE ...
+        r'\bTRUNCATE TABLE\b',          # TRUNCATE TABLE ...
+        r'\bCREATE TABLE\b',            # CREATE TABLE ...
+        r'\bALTER TABLE\b',             # ALTER TABLE ...
+        r'\bUNION\b.*?\bSELECT\b',      # UNION ... SELECT ...
+        r'\bWHERE\b.*?\b=\b',           # WHERE ... =
+        r'\bAND\b.*?\b=\b',             # AND ... =
+        r'\bOR\b.*?\b=\b',              # OR ... =
+        r'\bLIKE\b',                    # LIKE ...
+        r'\bBETWEEN\b',                 # BETWEEN ...
+        r'\bIN\b',                      # IN ...
+        r'\bJOIN\b',                    # JOIN ...
+        r'\bGROUP BY\b',                # GROUP BY ...
+        r'\bORDER BY\b',                # ORDER BY ...
+        r'\bHAVING\b',                  # HAVING ...
+        r'\bLIMIT\b',                   # LIMIT ...
+    ]
+
+    # Check SQLi patterns in decoded URL and body
+    for pattern in sqli_patterns:
+        if re.search(pattern, decoded_url, re.IGNORECASE) or re.search(pattern, decoded_body, re.IGNORECASE):
+            return 1
+    return 0
+
 # Parse HAR file and extract requests/responses
 result_har = parse_har(har_file)
 
@@ -133,6 +163,8 @@ with open(csv_file, "w", newline='', encoding='utf-8') as f:
 
     for request_method, request_url, request_headers, request_body, response_body in result_har:
         features = analyze_request_har(request_method, request_url, request_headers, request_body)
+        features['has_sql_keywords'] = detect_sqli_payload(request_url, request_body)
         writer.writerow(features)
 
 print(f"CSV file '{csv_file}' has been successfully created with analyzed HTTP request data from HAR file including security analysis for XSS, SQLi, and CSRF.")
+
