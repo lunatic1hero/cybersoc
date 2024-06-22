@@ -45,18 +45,75 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         # Add more features as needed based on your specific WAF requirements
     }
 
-    # Check if request_body is not None or empty
+    # Check for SQL keywords
     if request_body:
-        # Features related to potential attacks
-        features.update({
-            'has_sql_keywords': int(any(re.search(r'\b({})\b'.format('|'.join(['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE'])), request_body, re.IGNORECASE))),
-            'has_xss_payload': int('<script' in request_body.lower()),
-            'has_double_quotes': int('"' in request_body),
-            # Check for CSRF token presence
-            'has_csrf_token': int('csrf_token' in request_body.lower()) or 'csrf_token' in request_headers
-        })
+        sql_keywords = [
+            'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE',
+            'UNION', 'FROM', 'WHERE', 'AND', 'OR', 'LIKE', 'BETWEEN', 'IN', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT'
+        ]
+        features['has_sql_keywords'] = int(any(re.search(r'\b({})\b'.format('|'.join(sql_keywords)), request_body, re.IGNORECASE)))
+
+    # Check for XSS payload
+    if request_body:
+        xss_patterns = [
+            r'<script[^>]*?>',        # <script>
+            r'onmouseover\s*=',       # onmouseover=
+            r'onerror\s*=',           # onerror=
+            r'onload\s*=',            # onload=
+            r'javascript:',           # javascript:
+            r'alert\(',               # alert(
+            r'confirm\(',             # confirm(
+            r'prompt\(',              # prompt(
+            r'document\.cookie',      # document.cookie
+            r'document\.location',    # document.location
+            r'window\.location',      # window.location
+            r'eval\(',                # eval(
+            r'setTimeout\(',          # setTimeout(
+            r'setInterval\(',         # setInterval(
+            r'execCommand',           # execCommand
+            r'innerHTML',             # innerHTML
+            r'outerHTML',             # outerHTML
+            r'document\.write',       # document.write
+            r'XMLHttpRequest\.open',  # XMLHttpRequest.open
+            r'FormData\.append',      # FormData.append
+            r'document\.getElementById',  # document.getElementById
+            r'document\.createElement',   # document.createElement
+            r'document\.execCommand',     # document.execCommand
+            r'window\.open',              # window.open
+            r'window\.eval',              # window.eval
+            r'window\.setTimeout',        # window.setTimeout
+            r'window\.setInterval',       # window.setInterval
+            r'document\.URL',             # document.URL
+            r'location\.href',            # location.href
+            r'location\.search',          # location.search
+            r'document\.referrer',        # document.referrer
+            r'navigator\.sendBeacon',     # navigator.sendBeacon
+            r'importScripts',             # importScripts
+            r'alert`',                    # alert`
+            r'confirm`',                  # confirm`
+            r'prompt`',                   # prompt`
+            r'`',                         # `
+        ]
+        features['has_xss_payload'] = detect_xss_payload(request_body.lower(), xss_patterns)
+
+    # Check for CSRF token presence
+    csrf_keywords = ['csrf_token', 'anti_csrf_token', 'xsrf_token']  # Add other CSRF token keywords as needed
+    csrf_pattern = r'\b({})\b'.format('|'.join(csrf_keywords))
+    features['has_csrf_token'] = int(any(re.search(csrf_pattern, request_body.lower()) or key.lower() in request_headers for key in csrf_keywords))
+
+    # Check for double quotes
+    features['has_double_quotes'] = int('"' in request_body)
 
     return features
+
+def detect_xss_payload(request_body, xss_patterns):
+    '''
+    Detects XSS payloads in the request body using specified patterns.
+    '''
+    for pattern in xss_patterns:
+        if re.search(pattern, request_body):
+            return 1
+    return 0
 
 # Parse HAR file and extract requests/responses
 result_har = parse_har(har_file)
