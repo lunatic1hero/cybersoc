@@ -53,41 +53,41 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
             'UNION', 'FROM', 'WHERE', 'AND', 'OR', 'LIKE', 'BETWEEN', 'IN', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT'
         ]
         features['has_sql_keywords'] = int(any(re.search(r'\b({})\b'.format('|'.join(sql_keywords)), request_body, re.IGNORECASE)))
+        features['has_sql_keywords'] |= detect_sqli_payload(request_url, request_body)
 
-    # Check for XSS payload
-    if request_body:
-        xss_patterns = [
-            r'<script',                # <script
-            r'alert\(',                # alert(
-            r'\(alert\(',              # (alert(
-            r'</script>',              # </script>
-            r'document\.cookie',       # document.cookie
-            r'eval\(',                 # eval(
-            r'window\.location',       # window.location
-            r'setTimeout\(',           # setTimeout(
-            r'setInterval\(',          # setInterval(
-            r'execCommand',            # execCommand
-            r'innerHTML',              # innerHTML
-            r'outerHTML',              # outerHTML
-            r'document\.write',        # document.write
-            r'XMLHttpRequest\.open',   # XMLHttpRequest.open
-            r'FormData\.append',       # FormData.append
-            r'document\.getElementById',  # document.getElementById
-            r'document\.createElement',   # document.createElement
-            r'document\.execCommand',     # document.execCommand
-            r'window\.open',              # window.open
-            r'window\.eval',              # window.eval
-            r'window\.setTimeout',        # window.setTimeout
-            r'window\.setInterval',       # window.setInterval
-            r'document\.URL',             # document.URL
-            r'location\.href',            # location.href
-            r'location\.search',          # location.search
-            r'document\.referrer',        # document.referrer
-            r'navigator\.sendBeacon',     # navigator.sendBeacon
-            r'importScripts',             # importScripts
-            r'`',                         # `
-        ]
-        features['has_xss_payload'] = detect_xss_payload(request_url.lower(), request_body.lower(), xss_patterns)
+    # Check for XSS payload in both URL and body
+    xss_patterns = [
+        r'<script',                # <script
+        r'alert\(',                # alert(
+        r'\(alert\(',              # (alert(
+        r'</script>',              # </script>
+        r'document\.cookie',       # document.cookie
+        r'eval\(',                 # eval(
+        r'window\.location',       # window.location
+        r'setTimeout\(',           # setTimeout(
+        r'setInterval\(',          # setInterval(
+        r'execCommand',            # execCommand
+        r'innerHTML',              # innerHTML
+        r'outerHTML',              # outerHTML
+        r'document\.write',        # document.write
+        r'XMLHttpRequest\.open',   # XMLHttpRequest.open
+        r'FormData\.append',       # FormData.append
+        r'document\.getElementById',  # document.getElementById
+        r'document\.createElement',   # document.createElement
+        r'document\.execCommand',     # document.execCommand
+        r'window\.open',              # window.open
+        r'window\.eval',              # window.eval
+        r'window\.setTimeout',        # window.setTimeout
+        r'window\.setInterval',       # window.setInterval
+        r'document\.URL',             # document.URL
+        r'location\.href',            # location.href
+        r'location\.search',          # location.search
+        r'document\.referrer',        # document.referrer
+        r'navigator\.sendBeacon',     # navigator.sendBeacon
+        r'importScripts',             # importScripts
+        r'`',                         # `
+    ]
+    features['has_xss_payload'] = detect_xss_payload(request_url.lower(), request_body.lower(), xss_patterns)
 
     # Check for CSRF token presence
     csrf_keywords = ['csrf_token', 'anti_csrf_token', 'xsrf_token']  # Add other CSRF token keywords as needed
@@ -163,8 +163,6 @@ with open(csv_file, "w", newline='', encoding='utf-8') as f:
 
     for request_method, request_url, request_headers, request_body, response_body in result_har:
         features = analyze_request_har(request_method, request_url, request_headers, request_body)
-        features['has_sql_keywords'] = detect_sqli_payload(request_url, request_body)
         writer.writerow(features)
 
 print(f"CSV file '{csv_file}' has been successfully created with analyzed HTTP request data from HAR file including security analysis for XSS, SQLi, and CSRF.")
-
