@@ -15,7 +15,7 @@ def parse_har(har_file):
         for entry in har_data['log']['entries']:
             request = entry['request']
             response = entry['response']
-            request_url = request['url']
+            request_url = urllib.parse.unquote(request['url'])  # Decode URL
             request_method = request['method']
             request_headers = {header['name']: header['value'] for header in request['headers']}
             request_body = request.get('postData', {}).get('text', '')
@@ -95,7 +95,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
             r'prompt`',                   # prompt`
             r'`',                         # `
         ]
-        features['has_xss_payload'] = detect_xss_payload(request_body.lower(), xss_patterns)
+        features['has_xss_payload'] = detect_xss_payload(request_url.lower(), request_body.lower(), xss_patterns)
 
     # Check for CSRF token presence
     csrf_keywords = ['csrf_token', 'anti_csrf_token', 'xsrf_token']  # Add other CSRF token keywords as needed
@@ -107,15 +107,17 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
 
     return features
 
-def detect_xss_payload(request_body, xss_patterns):
+def detect_xss_payload(request_url, request_body, xss_patterns):
     '''
-    Detects XSS payloads in the request body using specified patterns.
+    Detects XSS payloads in the request URL and body using specified patterns.
     '''
-    # Decode URL-encoded payloads in the request body
+    # Decode URL-encoded payloads in the request URL and body
+    decoded_url = urllib.parse.unquote(request_url)
     decoded_body = urllib.parse.unquote(request_body)
 
+    # Check XSS patterns in both URL and body
     for pattern in xss_patterns:
-        if re.search(pattern, decoded_body, re.IGNORECASE):
+        if re.search(pattern, decoded_url, re.IGNORECASE) or re.search(pattern, decoded_body, re.IGNORECASE):
             return 1
     return 0
 
