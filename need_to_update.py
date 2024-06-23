@@ -72,7 +72,8 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
             'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE',
             'UNION', 'FROM', 'WHERE', 'AND', 'OR', 'LIKE', 'BETWEEN', 'IN', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT'
         ]
-        features['has_sql_keywords'] = int(any(re.search(r'\b({})\b'.format('|'.join(sql_keywords)), uid + ' ' + passw, re.IGNORECASE)))
+        combined_params = uid + ' ' + passw
+        features['has_sql_keywords'] = int(any(re.search(r'\b({})\b'.format('|'.join(sql_keywords)), combined_params, re.IGNORECASE)))
 
         # Check for XSS payload in 'uid' and 'passw' (if needed)
         xss_patterns = [
@@ -177,7 +178,9 @@ result_har = parse_har(har_file)
 # Open the CSV file for writing
 csv_file = 'http_log_with_security_analysis.csv'
 with open(csv_file, "w", newline='', encoding='utf-8') as f:
-    fieldnames = ['method', 'path', 'headers', 'body', 'body_length', 'num_commas', 'num_hyphens', 'num_spaces', 'num_quotes', 'num_double_quotes', 'num_parentheses', 'num_brackets', 'has_sql_keywords', 'has_xss_payload', 'has_csrf_token', 'has_double_quotes']
+    fieldnames = ['method', 'path', 'headers', 'body', 'body_length', 'num_commas', 'num_hyphens', 'num_spaces',
+                  'num_quotes', 'num_double_quotes', 'num_parentheses', 'num_brackets', 'has_sql_keywords',
+                  'has_xss_payload', 'has_csrf_token', 'has_double_quotes']
     writer = csv.DictWriter(f, fieldnames=fieldnames)
     writer.writeheader()
 
