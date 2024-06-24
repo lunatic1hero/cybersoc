@@ -86,7 +86,11 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
             'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE',
             'UNION', 'FROM', 'WHERE', 'AND', 'OR', 'LIKE', 'BETWEEN', 'IN', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT'
         ]
-        features['has_sql_keywords'] = int(any(re.search(r'\b({})\b'.format('|'.join(sql_keywords)), uid_value, re.IGNORECASE)))
+        try:
+            features['has_sql_keywords'] = int(any(re.search(r'\b({})\b'.format('|'.join(sql_keywords)), uid_value, re.IGNORECASE)))
+        except TypeError as e:
+            print(f"Error during SQL keyword search: {e}")
+            features['has_sql_keywords'] = 0
 
     # Check for XSS payload in URL and headers (not in the body, as per your request)
     xss_patterns = [
