@@ -47,15 +47,25 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         'num_hyphens': 0,
         'num_brackets': 0,
         'has_sql_keywords': 0,
-        'has_xss_payload': 0,
-        'has_csrf_token': 0,
         'has_double_quotes': 0,
         'num_single_quotes': 0,
         'num_double_quotes': 0,
         'num_slashes': 0,
         'num_spaces': 0,
+        'has_xss_payload': 0,
+        'has_csrf_token': 0,
         # Add more features as needed based on your specific requirements
     }
+
+    # Count specific characters in the 'uid' parameter value
+    if 'uid' in request_body.lower():
+        features['num_commas'] = request_body.count(',')
+        features['num_hyphens'] = request_body.count('-')
+        features['num_brackets'] = request_body.count('(') + request_body.count(')')
+        features['num_single_quotes'] = request_body.count("'")
+        features['num_double_quotes'] = request_body.count('"')
+        features['num_slashes'] = request_body.count('/')
+        features['num_spaces'] = request_body.count(' ')
 
     # Check for SQL keywords in the 'uid' parameter value
     if 'uid' in request_body.lower():
@@ -69,17 +79,35 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
                 features['has_sql_keywords'] = 1
                 break
 
-    # Count specific characters in the 'uid' parameter value
-    if 'uid' in request_body.lower():
-        features['num_commas'] = request_body.count(',')
-        features['num_hyphens'] = request_body.count('-')
-        features['num_brackets'] = request_body.count('(') + request_body.count(')')
-        features['num_single_quotes'] = request_body.count("'")
-        features['num_double_quotes'] = request_body.count('"')
-        features['num_slashes'] = request_body.count('/')
-        features['num_spaces'] = request_body.count(' ')
+    # Check for double quotes in the 'uid' parameter value
+    features['has_double_quotes'] = int('"' in request_body)
 
-    # Check for XSS payload in both URL and body
+    return features
+
+def detect_xss_payload(request_url, request_body, xss_patterns):
+    '''
+    Detects XSS payloads in the request URL and body using specified patterns.
+    '''
+    # Decode URL-encoded payloads in the request URL and body
+    decoded_url = urllib.parse.unquote(request_url)
+    decoded_body = urllib.parse.unquote(request_body)
+
+    # Check XSS patterns in both URL and body
+    for pattern in xss_patterns:
+        if re.search(pattern, decoded_url, re.IGNORECASE) or re.search(pattern, decoded_body, re.IGNORECASE):
+            return 1
+    return 0
+
+# Parse HAR file and extract requests/responses
+result_har = parse_har(har_file)
+
+# Open the CSV file for writing
+csv_file = 'http_log_with_security_analysis.csv'
+with open(csv_file, "w", newline='', encoding='utf-8') as f:
+    fieldnames = ['method', 'path', 'headers', 'body', 'body_length', 'num_commas', 'num_hyphens', 'num_brackets', 'has_sql_keywords', 'has_double_quotes', 'num_single_quotes', 'num_double_quotes', 'num_slashes', 'num_spaces', 'has_xss_payload', 'has_csrf_token']
+    writer = csv.DictWriter(f, fieldnames=fieldnames)
+    writer.writeheader()
+
     xss_patterns = [
         r'<script',                # <script
         r'alert\(',                # alert(
@@ -111,44 +139,11 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         r'importScripts',             # importScripts
         r'`',                         # `
     ]
-    features['has_xss_payload'] = detect_xss_payload(request_url.lower(), request_body.lower(), xss_patterns)
-
-    # Check for CSRF token presence
-    csrf_keywords = ['csrf_token', 'anti_csrf_token', 'xsrf_token']  # Add other CSRF token keywords as needed
-    csrf_pattern = r'\b({})\b'.format('|'.join(csrf_keywords))
-    features['has_csrf_token'] = int(any(re.search(csrf_pattern, request_body.lower()) or key.lower() in request_headers for key in csrf_keywords))
-
-    # Check for double quotes
-    features['has_double_quotes'] = int('"' in request_body)
-
-    return features
-
-def detect_xss_payload(request_url, request_body, xss_patterns):
-    '''
-    Detects XSS payloads in the request URL and body using specified patterns.
-    '''
-    # Decode URL-encoded payloads in the request URL and body
-    decoded_url = urllib.parse.unquote(request_url)
-    decoded_body = urllib.parse.unquote(request_body)
-
-    # Check XSS patterns in both URL and body
-    for pattern in xss_patterns:
-        if re.search(pattern, decoded_url, re.IGNORECASE) or re.search(pattern, decoded_body, re.IGNORECASE):
-            return 1
-    return 0
-
-# Parse HAR file and extract requests/responses
-result_har = parse_har(har_file)
-
-# Open the CSV file for writing
-csv_file = 'http_log_with_security_analysis.csv'
-with open(csv_file, "w", newline='', encoding='utf-8') as f:
-    fieldnames = ['method', 'path', 'headers', 'body', 'body_length', 'num_commas', 'num_hyphens', 'num_brackets', 'has_sql_keywords', 'has_xss_payload', 'has_csrf_token', 'has_double_quotes', 'num_single_quotes', 'num_double_quotes', 'num_slashes', 'num_spaces']
-    writer = csv.DictWriter(f, fieldnames=fieldnames)
-    writer.writeheader()
 
     for request_method, request_url, request_headers, request_body, response_body in result_har:
         features = analyze_request_har(request_method, request_url, request_headers, request_body)
+        features['has_xss_payload'] = detect_xss_payload(request_url.lower(), request_body.lower(), xss_patterns)
         writer.writerow(features)
 
 print(f"CSV file '{csv_file}' has been successfully created with analyzed HTTP request data from HAR file including security analysis for XSS, SQLi, CSRF, and additional features.")
+
