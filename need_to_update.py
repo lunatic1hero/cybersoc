@@ -50,10 +50,11 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     }
 
     # Extract UID value from request_body_params
-    uid_value = next((param['value'] for param in request_body_params if param['name'] == 'uid'), '')
+    uid_param = next((param for param in request_body_params if param.get('name') == 'uid'), None)
+    if uid_param:
+        uid_value = uid_param.get('value', '')
 
-    # Count characters in UID value
-    if uid_value:
+        # Count characters in UID value
         features['body'] = uid_value
         features['body_length'] = len(uid_value)
         features['num_commas'] = uid_value.count(',')
