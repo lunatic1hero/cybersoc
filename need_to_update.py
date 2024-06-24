@@ -18,7 +18,14 @@ def parse_har(har_file):
             request_url = urllib.parse.unquote(request['url'])  # Decode URL
             request_method = request['method']
             request_headers = {header['name']: header['value'] for header in request['headers']}
-            request_body = request.get('postData', {}).get('text', '')
+            
+            # Find the 'uid' parameter and its value in the request body
+            request_body = ''
+            for param in request['queryString']:
+                if param['name'] == 'uid':
+                    request_body = param['value']
+                    break
+            
             response_body = response.get('content', {}).get('text', '')
 
             result.append((request_method, request_url, request_headers, request_body, response_body))
@@ -36,22 +43,22 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         'headers': str(request_headers),
         'body': request_body if request_body else '',  # Set default value for request_body
         'body_length': len(request_body) if request_body else 0,
-        'num_commas': request_body.count(',') if request_body else 0,
-        'num_hyphens': request_body.count('-') if request_body else 0,
-        'num_brackets': request_body.count('(') + request_body.count(')') if request_body else 0,
+        'num_commas': 0,
+        'num_hyphens': 0,
+        'num_brackets': 0,
         'has_sql_keywords': 0,
         'has_xss_payload': 0,
         'has_csrf_token': 0,
         'has_double_quotes': 0,
-        'num_single_quotes': request_body.count("'"),
-        'num_double_quotes': request_body.count('"'),
-        'num_slashes': request_body.count('/'),
-        'num_spaces': request_body.count(' '),
+        'num_single_quotes': 0,
+        'num_double_quotes': 0,
+        'num_slashes': 0,
+        'num_spaces': 0,
         # Add more features as needed based on your specific requirements
     }
 
-    # Check for SQL keywords
-    if request_body:
+    # Check for SQL keywords in the 'uid' parameter value
+    if 'uid' in request_body.lower():
         sql_keywords = [
             'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE',
             'UNION', 'FROM', 'WHERE', 'AND', 'OR', 'LIKE', 'BETWEEN', 'IN', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT'
@@ -61,6 +68,16 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
             if keyword.lower() in request_body.lower():
                 features['has_sql_keywords'] = 1
                 break
+
+    # Count specific characters in the 'uid' parameter value
+    if 'uid' in request_body.lower():
+        features['num_commas'] = request_body.count(',')
+        features['num_hyphens'] = request_body.count('-')
+        features['num_brackets'] = request_body.count('(') + request_body.count(')')
+        features['num_single_quotes'] = request_body.count("'")
+        features['num_double_quotes'] = request_body.count('"')
+        features['num_slashes'] = request_body.count('/')
+        features['num_spaces'] = request_body.count(' ')
 
     # Check for XSS payload in both URL and body
     xss_patterns = [
