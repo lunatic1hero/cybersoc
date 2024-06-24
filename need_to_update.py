@@ -18,10 +18,10 @@ def parse_har(har_file):
             request_url = urllib.parse.unquote(request['url'])  # Decode URL
             request_method = request['method']
             request_headers = {header['name']: header['value'] for header in request['headers']}
-            request_body = request.get('postData', {}).get('params', [])
+            request_body_params = request.get('postData', {}).get('params', [])
             response_body = response.get('content', {}).get('text', '')
 
-            result.append((request_method, request_url, request_headers, request_body, response_body))
+            result.append((request_method, request_url, request_headers, request_body_params, response_body))
 
     return result
 
@@ -50,11 +50,10 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     }
 
     # Extract UID value from request_body_params
-    uid_param = next((param for param in request_body_params if param.get('name') == 'uid'), None)
-    if uid_param:
-        uid_value = uid_param.get('value', '')
+    uid_value = next((param['value'] for param in request_body_params if param['name'] == 'uid'), '')
 
-        # Count characters in UID value
+    # Count characters in UID value
+    if uid_value:
         features['body'] = uid_value
         features['body_length'] = len(uid_value)
         features['num_commas'] = uid_value.count(',')
@@ -71,9 +70,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
             'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE',
             'UNION', 'FROM', 'WHERE', 'AND', 'OR', 'LIKE', 'BETWEEN', 'IN', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT'
         ]
-        # Ensure uid_value is a string before checking SQL keywords
-        if isinstance(uid_value, str):
-            features['has_sql_keywords'] = int(any(re.search(r'\b({})\b'.format('|'.join(sql_keywords)), uid_value, re.IGNORECASE)))
+        features['has_sql_keywords'] = int(any(re.search(r'\b({})\b'.format('|'.join(sql_keywords)), uid_value, re.IGNORECASE)))
 
     # Check for XSS payload in URL and headers (not in the body, as per your request)
     xss_patterns = [
@@ -146,3 +143,5 @@ with open(csv_file, "w", newline='', encoding='utf-8') as f:
         writer.writerow(features)
 
 print(f"CSV file '{csv_file}' has been successfully created with analyzed HTTP request data from HAR file including security analysis for XSS, SQLi, and CSRF.")
+
+# Changes made to handle NoneType error and ensure functionality intact
