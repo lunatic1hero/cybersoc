@@ -63,8 +63,13 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     print(f"Request body params: {request_body_params}")
     print(f"Extracted UID value: {uid_value}")
 
+    if uid_value is None:
+        print(f"UID value is None, skipping SQL keyword analysis for request: {request_method} {request_url}")
+    else:
+        print(f"UID value is '{uid_value}'")
+
     # Count characters in UID value
-    if uid_value is not None:
+    if uid_value:
         features['body'] = uid_value
         features['body_length'] = len(uid_value)
         features['num_commas'] = uid_value.count(',')
