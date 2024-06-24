@@ -12,7 +12,7 @@ def parse_har(har_file):
     result = []
     with open(har_file, 'r', encoding='utf-8') as file:
         har_data = json.load(file)
-        for entry in har_data['log']['entries']:
+        for entry in har_data.get('log', {}).get('entries', []):
             request = entry.get('request', {})
             response = entry.get('response', {})
             request_url = urllib.parse.unquote(request.get('url', ''))  # Decode URL
@@ -20,8 +20,9 @@ def parse_har(har_file):
             request_headers = {header['name']: header['value'] for header in request.get('headers', [])}
             
             # Extracting the UID parameter value from postData
-            request_body = request.get('postData', {}).get('text', '')
-            postData_params = {param['name']: param['value'] for param in request.get('postData', {}).get('params', [])}
+            postData = request.get('postData', {})
+            request_body = postData.get('text', '')
+            postData_params = {param['name']: param['value'] for param in postData.get('params', [])}
             uid_value = postData_params.get('uid', '')
             
             response_body = response.get('content', {}).get('text', '')
@@ -48,7 +49,6 @@ def analyze_request_har(request_method, request_url, request_headers, uid_value,
         'has_xss_payload': 0,
         'has_csrf_token': 0,
         'has_double_quotes': int('"' in uid_value),
-        # Add more features as needed based on your specific WAF requirements
     }
 
     # Check for SQL keywords in the uid_value
@@ -116,6 +116,9 @@ def detect_xss_payload(request_url, request_body, xss_patterns):
 
 # Parse HAR file and extract requests/responses
 result_har = parse_har(har_file)
+
+# Debug print to check the parsed results
+print("Parsed HAR data:", result_har)
 
 # Open the CSV file for writing
 csv_file = 'http_log_with_security_analysis.csv'
