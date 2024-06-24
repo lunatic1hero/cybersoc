@@ -50,7 +50,12 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     }
 
     # Extract UID value from request_body_params
-    uid_value = next((param['value'] for param in request_body_params if param.get('name') == 'uid'), None)
+    uid_value = None
+    if isinstance(request_body_params, list):
+        for param in request_body_params:
+            if isinstance(param, dict) and param.get('name') == 'uid':
+                uid_value = param.get('value')
+                break
 
     # Count characters in UID value
     if uid_value is not None:
