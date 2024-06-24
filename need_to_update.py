@@ -19,9 +19,9 @@ def parse_har(har_file):
             request_method = request['method']
             request_headers = {header['name']: header['value'] for header in request['headers']}
             
-            # Find the 'uid' parameter and its value in the request body
+            # Find the 'uid' parameter value in the postData params
             request_body = ''
-            for param in request['queryString']:
+            for param in request['postData']['params']:
                 if param['name'] == 'uid':
                     request_body = param['value']
                     break
