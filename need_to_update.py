@@ -10,24 +10,31 @@ def parse_har(har_file):
     Parses a HAR file and returns a list of HTTP request/response pairs.
     '''
     result = []
-    with open(har_file, 'r', encoding='utf-8') as file:
-        har_data = json.load(file)
-        for entry in har_data.get('log', {}).get('entries', []):
-            request = entry.get('request', {})
-            response = entry.get('response', {})
-            request_url = urllib.parse.unquote(request.get('url', ''))  # Decode URL
-            request_method = request.get('method', '')
-            request_headers = {header['name']: header['value'] for header in request.get('headers', [])}
-            
-            # Extracting the UID parameter value from postData
-            postData = request.get('postData', {})
-            request_body = postData.get('text', '')
-            postData_params = {param['name']: param['value'] for param in postData.get('params', [])}
-            uid_value = postData_params.get('uid', '')
-            
-            response_body = response.get('content', {}).get('text', '')
+    try:
+        with open(har_file, 'r', encoding='utf-8') as file:
+            har_data = json.load(file)
+            log = har_data.get('log', {})
+            entries = log.get('entries', [])
+            for entry in entries:
+                request = entry.get('request', {})
+                response = entry.get('response', {})
+                request_url = urllib.parse.unquote(request.get('url', ''))  # Decode URL
+                request_method = request.get('method', '')
+                request_headers = {header['name']: header['value'] for header in request.get('headers', [])}
+                
+                # Extracting the UID parameter value from postData
+                postData = request.get('postData', {})
+                request_body = postData.get('text', '')
+                postData_params = {param['name']: param['value'] for param in postData.get('params', [])}
+                uid_value = postData_params.get('uid', '')
+                
+                response_body = response.get('content', {}).get('text', '')
 
-            result.append((request_method, request_url, request_headers, uid_value, request_body, response_body))
+                result.append((request_method, request_url, request_headers, uid_value, request_body, response_body))
+    except FileNotFoundError:
+        print(f"Error: File '{har_file}' not found.")
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON in '{har_file}': {e}")
 
     return result
 
@@ -42,9 +49,9 @@ def analyze_request_har(request_method, request_url, request_headers, uid_value,
         'headers': str(request_headers),
         'body': uid_value,  # Use the uid value for the body column
         'body_length': len(uid_value),
-        'num_commas': uid_value.count(','),
-        'num_hyphens': uid_value.count('-'),
-        'num_brackets': uid_value.count('(') + uid_value.count(')'),
+        'num_commas': uid_value.count(',') if uid_value else 0,
+        'num_hyphens': uid_value.count('-') if uid_value else 0,
+        'num_brackets': uid_value.count('(') + uid_value.count(')') if uid_value else 0,
         'has_sql_keywords': 0,
         'has_xss_payload': 0,
         'has_csrf_token': 0,
