@@ -32,7 +32,9 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     Analyzes the HTTP request from HAR file and extracts features related to common attacks.
     '''
     # Extract uid_value from request_body_params
-    uid_value = next((param['value'] for param in request_body_params.get('uid', []) if param.get('name') == 'uid'), '')
+    uid_value = ''
+    if isinstance(request_body_params, dict):
+        uid_value = next((param['value'] for param in request_body_params.get('uid', []) if param.get('name') == 'uid'), '')
 
     # Initialize features with default values
     features = {
@@ -174,5 +176,3 @@ with open(csv_file, "w", newline='', encoding='utf-8') as f:
     for request_method, request_url, request_headers, request_body_params, response_body in result_har:
         features = analyze_request_har(request_method, request_url, request_headers, request_body_params)
         writer.writerow(features)
-
-print(f"CSV file '{csv_file}' has been successfully created with analyzed HTTP request data from HAR file including security analysis for XSS, SQLi,
