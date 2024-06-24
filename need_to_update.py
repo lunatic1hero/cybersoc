@@ -13,11 +13,11 @@ def parse_har(har_file):
     with open(har_file, 'r', encoding='utf-8') as file:
         har_data = json.load(file)
         for entry in har_data['log']['entries']:
-            request = entry['request']
-            response = entry['response']
-            request_url = urllib.parse.unquote(request['url'])  # Decode URL
-            request_method = request['method']
-            request_headers = {header['name']: header['value'] for header in request['headers']}
+            request = entry.get('request', {})
+            response = entry.get('response', {})
+            request_url = urllib.parse.unquote(request.get('url', ''))  # Decode URL
+            request_method = request.get('method', '')
+            request_headers = {header['name']: header['value'] for header in request.get('headers', [])}
             
             # Extracting the UID parameter value from postData
             request_body = request.get('postData', {}).get('text', '')
