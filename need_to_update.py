@@ -18,27 +18,30 @@ def parse_har(har_file):
             request_url = urllib.parse.unquote(request['url'])  # Decode URL
             request_method = request['method']
             request_headers = {header['name']: header['value'] for header in request['headers']}
-            request_body = request.get('postData', {}).get('text', '')
+            request_body = request.get('postData', {}).get('params', [])
             response_body = response.get('content', {}).get('text', '')
 
             result.append((request_method, request_url, request_headers, request_body, response_body))
 
     return result
 
-def analyze_request_har(request_method, request_url, request_headers, uid_value, request_body):
+def analyze_request_har(request_method, request_url, request_headers, request_body):
     '''
     Analyzes the HTTP request from HAR file and extracts features related to common attacks.
     '''
+    # Extract UID value from request_body params
+    uid_value = next((param['value'] for param in request_body if param['name'] == 'uid'), None)
+
     # Initialize features with default values
     features = {
         'method': request_method,
         'path': request_url,
         'headers': str(request_headers),
-        'body': request_body if request_body else '',  # Set default value for request_body
-        'body_length': len(request_body) if request_body else 0,
-        'num_commas': request_body.count(',') if request_body else 0,
-        'num_hyphens': request_body.count('-') if request_body else 0,
-        'num_brackets': request_body.count('(') + request_body.count(')') if request_body else 0,
+        'body': uid_value if uid_value else '',  # Set default value for request_body
+        'body_length': len(uid_value) if uid_value else 0,
+        'num_commas': uid_value.count(',') if uid_value else 0,
+        'num_hyphens': uid_value.count('-') if uid_value else 0,
+        'num_brackets': uid_value.count('(') + uid_value.count(')') if uid_value else 0,
         'has_sql_keywords': 0,
         'has_xss_payload': 0,
         'has_csrf_token': 0,
@@ -47,16 +50,15 @@ def analyze_request_har(request_method, request_url, request_headers, uid_value,
     }
 
     # Check for SQL keywords
-    if request_body and uid_value:
+    if uid_value:
         sql_keywords = [
             'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE',
             'UNION', 'FROM', 'WHERE', 'AND', 'OR', 'LIKE', 'BETWEEN', 'IN', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT'
         ]
-        # Check if uid_value contains SQL keywords
-        has_sql_keywords = any(re.search(r'\b({})\b'.format(keyword), uid_value, re.IGNORECASE) for keyword in sql_keywords)
-        features['has_sql_keywords'] = int(has_sql_keywords)
+        features['has_sql_keywords'] = int(any(re.search(r'\b({})\b'.format('|'.join(sql_keywords)), uid_value, re.IGNORECASE)))
+        features['has_sql_keywords'] |= detect_sqli_payload(request_url, uid_value)
 
-    # Check for XSS payload in both URL and body
+    # Check for XSS payload in both URL and body (without modification)
     xss_patterns = [
         r'<script',                # <script
         r'alert\(',                # alert(
@@ -88,15 +90,15 @@ def analyze_request_har(request_method, request_url, request_headers, uid_value,
         r'importScripts',             # importScripts
         r'`',                         # `
     ]
-    features['has_xss_payload'] = detect_xss_payload(request_url.lower(), request_body.lower(), xss_patterns)
+    features['has_xss_payload'] = detect_xss_payload(request_url.lower(), uid_value.lower(), xss_patterns)
 
     # Check for CSRF token presence
     csrf_keywords = ['csrf_token', 'anti_csrf_token', 'xsrf_token']  # Add other CSRF token keywords as needed
     csrf_pattern = r'\b({})\b'.format('|'.join(csrf_keywords))
-    features['has_csrf_token'] = int(any(re.search(csrf_pattern, request_body.lower()) or key.lower() in request_headers for key in csrf_keywords))
+    features['has_csrf_token'] = int(any(re.search(csrf_pattern, uid_value.lower()) or key.lower() in request_headers for key in csrf_keywords))
 
     # Check for double quotes
-    features['has_double_quotes'] = int('"' in request_body)
+    features['has_double_quotes'] = int('"' in uid_value)
 
     return features
 
@@ -163,10 +165,7 @@ with open(csv_file, "w", newline='', encoding='utf-8') as f:
     writer.writeheader()
 
     for request_method, request_url, request_headers, request_body, response_body in result_har:
-        # Extract uid value from request_body
-        uid_value = next((param['value'] for param in request_body.get('params', []) if param['name'] == 'uid'), None)
-        features = analyze_request_har(request_method, request_url, request_headers, uid_value, request_body)
+        features = analyze_request_har(request_method, request_url, request_headers, request_body)
         writer.writerow(features)
 
 print(f"CSV file '{csv_file}' has been successfully created with analyzed HTTP request data from HAR file including security analysis for XSS, SQLi, and CSRF.")
-
