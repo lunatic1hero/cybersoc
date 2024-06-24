@@ -10,31 +10,24 @@ def parse_har(har_file):
     Parses a HAR file and returns a list of HTTP request/response pairs.
     '''
     result = []
-    try:
-        with open(har_file, 'r', encoding='utf-8') as file:
-            har_data = json.load(file)
-            log = har_data.get('log', {})
-            entries = log.get('entries', [])
-            for entry in entries:
-                request = entry.get('request', {})
-                response = entry.get('response', {})
-                request_url = urllib.parse.unquote(request.get('url', ''))  # Decode URL
-                request_method = request.get('method', '')
-                request_headers = {header['name']: header['value'] for header in request.get('headers', [])}
-                
-                # Extracting the UID parameter value from postData
-                postData = request.get('postData', {})
-                request_body = postData.get('text', '')
-                postData_params = {param['name']: param['value'] for param in postData.get('params', [])}
-                uid_value = postData_params.get('uid', '')
-                
-                response_body = response.get('content', {}).get('text', '')
+    with open(har_file, 'r', encoding='utf-8') as file:
+        har_data = json.load(file)
+        for entry in har_data['log']['entries']:
+            request = entry['request']
+            response = entry['response']
+            request_url = urllib.parse.unquote(request['url'])  # Decode URL
+            request_method = request['method']
+            request_headers = {header['name']: header['value'] for header in request['headers']}
+            
+            # Extracting the UID parameter value from postData
+            postData = request.get('postData', {})
+            request_body = postData.get('text', '')
+            postData_params = {param['name']: param['value'] for param in postData.get('params', [])}
+            uid_value = postData_params.get('uid', '')
+            
+            response_body = response.get('content', {}).get('text', '')
 
-                result.append((request_method, request_url, request_headers, uid_value, request_body, response_body))
-    except FileNotFoundError:
-        print(f"Error: File '{har_file}' not found.")
-    except json.JSONDecodeError as e:
-        print(f"Error decoding JSON in '{har_file}': {e}")
+            result.append((request_method, request_url, request_headers, uid_value, request_body, response_body))
 
     return result
 
@@ -47,8 +40,8 @@ def analyze_request_har(request_method, request_url, request_headers, uid_value,
         'method': request_method,
         'path': request_url,
         'headers': str(request_headers),
-        'body': uid_value,  # Use the uid value for the body column
-        'body_length': len(uid_value),
+        'body': uid_value if uid_value else '',  # Set default value for uid_value
+        'body_length': len(uid_value) if uid_value else 0,
         'num_commas': uid_value.count(',') if uid_value else 0,
         'num_hyphens': uid_value.count('-') if uid_value else 0,
         'num_brackets': uid_value.count('(') + uid_value.count(')') if uid_value else 0,
@@ -56,6 +49,7 @@ def analyze_request_har(request_method, request_url, request_headers, uid_value,
         'has_xss_payload': 0,
         'has_csrf_token': 0,
         'has_double_quotes': int('"' in uid_value),
+        # Add more features as needed based on your specific WAF requirements
     }
 
     # Check for SQL keywords in the uid_value
@@ -65,6 +59,7 @@ def analyze_request_har(request_method, request_url, request_headers, uid_value,
             'UNION', 'FROM', 'WHERE', 'AND', 'OR', 'LIKE', 'BETWEEN', 'IN', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT'
         ]
         features['has_sql_keywords'] = int(any(re.search(r'\b({})\b'.format('|'.join(sql_keywords)), uid_value, re.IGNORECASE)))
+        features['has_sql_keywords'] |= detect_sqli_payload(request_url, uid_value)
 
     # Check for XSS payload in both URL and body
     xss_patterns = [
@@ -121,11 +116,46 @@ def detect_xss_payload(request_url, request_body, xss_patterns):
             return 1
     return 0
 
+def detect_sqli_payload(request_url, request_body):
+    '''
+    Detects SQLi payloads in the request URL and body using specified patterns.
+    '''
+    # Decode URL-encoded payloads in the request URL and body
+    decoded_url = urllib.parse.unquote(request_url)
+    decoded_body = urllib.parse.unquote(request_body)
+
+    # SQL injection patterns
+    sqli_patterns = [
+        r'\bSELECT\b.*?\bFROM\b',       # SELECT ... FROM ...
+        r'\bINSERT INTO\b',             # INSERT INTO ...
+        r'\bUPDATE\b.*?\bSET\b',        # UPDATE ... SET ...
+        r'\bDELETE FROM\b',             # DELETE FROM ...
+        r'\bDROP TABLE\b',              # DROP TABLE ...
+        r'\bTRUNCATE TABLE\b',          # TRUNCATE TABLE ...
+        r'\bCREATE TABLE\b',            # CREATE TABLE ...
+        r'\bALTER TABLE\b',             # ALTER TABLE ...
+        r'\bUNION\b.*?\bSELECT\b',      # UNION ... SELECT ...
+        r'\bWHERE\b.*?\b=\b',           # WHERE ... =
+        r'\bAND\b.*?\b=\b',             # AND ... =
+        r'\bOR\b.*?\b=\b',              # OR ... =
+        r'\bLIKE\b',                    # LIKE ...
+        r'\bBETWEEN\b',                 # BETWEEN ...
+        r'\bIN\b',                      # IN ...
+        r'\bJOIN\b',                    # JOIN ...
+        r'\bGROUP BY\b',                # GROUP BY ...
+        r'\bORDER BY\b',                # ORDER BY ...
+        r'\bHAVING\b',                  # HAVING ...
+        r'\bLIMIT\b',                   # LIMIT ...
+    ]
+
+    # Check SQLi patterns in decoded URL and body
+    for pattern in sqli_patterns:
+        if re.search(pattern, decoded_url, re.IGNORECASE) or re.search(pattern, decoded_body, re.IGNORECASE):
+            return 1
+    return 0
+
 # Parse HAR file and extract requests/responses
 result_har = parse_har(har_file)
-
-# Debug print to check the parsed results
-print("Parsed HAR data:", result_har)
 
 # Open the CSV file for writing
 csv_file = 'http_log_with_security_analysis.csv'
