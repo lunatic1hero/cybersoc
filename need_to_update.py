@@ -57,6 +57,12 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
                 uid_value = param.get('value')
                 break
 
+    # Add debugging output to trace where the issue occurs
+    print(f"Analyzing request: {request_method} {request_url}")
+    print(f"Request headers: {request_headers}")
+    print(f"Request body params: {request_body_params}")
+    print(f"Extracted UID value: {uid_value}")
+
     # Count characters in UID value
     if uid_value is not None:
         features['body'] = uid_value
