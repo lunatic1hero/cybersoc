@@ -1,1 +1,0 @@
-method,path,headers,body,body_length,num_commas,num_hyphens,num_brackets,has_sql_keywords,has_xss_payload,has_csrf_token,has_double_quotes
