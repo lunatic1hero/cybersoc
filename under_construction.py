@@ -1,4 +1,3 @@
-
 import json
 import csv
 import re
@@ -93,6 +92,20 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         uid_value_lower = uid_value.lower()
         features['has_sql_keywords'] = int(any(keyword.lower() in uid_value_lower for keyword in sql_keywords))
 
+    # Check for SQL keywords in the URL
+    url_params = urllib.parse.parse_qs(urllib.parse.urlparse(request_url).query)
+    for param_values in url_params.values():
+        if isinstance(param_values, list):
+            for param_value in param_values:
+                for keyword in sql_keywords:
+                    if keyword.lower() in param_value.lower():
+                        features['has_sql_keywords'] = 1
+                        break
+                if features['has_sql_keywords'] == 1:
+                    break
+            if features['has_sql_keywords'] == 1:
+                break
+
     # Check for XSS payload in URL and headers (not in the body, as per your request)
     xss_patterns = [
         r'<script',                # <script
@@ -140,12 +153,7 @@ def detect_xss_payload(request_url, request_headers, xss_patterns):
     Detects XSS payloads in the request URL and headers using specified patterns.
     '''
     # Decode URL-encoded payloads in the request URL
-    decoded_url = request_url
-    while True:
-        temp_decoded_url = urllib.parse.unquote(decoded_url)
-        if temp_decoded_url == decoded_url:
-            break
-        decoded_url = temp_decoded_url
+    decoded_url = urllib.parse.unquote(urllib.parse.unquote(request_url))  # Double decode
 
     # Check XSS patterns in URL and headers
     for pattern in xss_patterns:
@@ -170,3 +178,4 @@ with open(csv_file, "w", newline='', encoding='utf-8') as f:
         writer.writerow(features)
 
 print(f"CSV file '{csv_file}' has been successfully created with analyzed HTTP request data from HAR file including security analysis for XSS, SQLi, and CSRF.")
+
