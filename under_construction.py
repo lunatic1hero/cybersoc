@@ -1,3 +1,4 @@
+
 import json
 import csv
 import re
@@ -123,6 +124,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         r'navigator\.sendBeacon',     # navigator.sendBeacon
         r'importScripts',             # importScripts
         r'`',                         # `
+        r'xss',                       # xss
     ]
     features['has_xss_payload'] = detect_xss_payload(request_url.lower(), str(request_headers), xss_patterns)
 
