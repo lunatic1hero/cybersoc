@@ -3,6 +3,12 @@ import csv
 import re
 import urllib.parse
 
+# Define SQL keywords globally
+sql_keywords = [
+    'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE',
+    'UNION', 'FROM', 'WHERE', 'AND', 'OR', 'LIKE', 'BETWEEN', 'IN', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT'
+]
+
 har_file = 'tester_of.har'  # Replace with your HAR file path
 
 def parse_har(har_file):
@@ -26,7 +32,7 @@ def parse_har(har_file):
             result.append((request_method, request_url, request_headers, request_body_params, response_status, response_time, response_body, response_headers))
     return result
 
-def analyze_request_har(request_method, request_url, request_headers, request_body_params, response_status, response_time):
+def analyze_request_har(request_method, request_url, request_headers, request_body_params, response_status, response_time, sql_keywords):
     '''
     Analyzes the HTTP request from HAR file and extracts features related to common attacks.
     '''
@@ -71,8 +77,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     else:
         print(f"UID value is '{uid_value}'")
 
-    # Count characters in UID value
-    if uid_value:
+        # Count characters in UID value
         features['body'] = uid_value
         features['body_length'] = len(uid_value)
         features['num_commas'] = uid_value.count(',')
@@ -85,26 +90,8 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         features['num_spaces'] = uid_value.count(' ')
 
         # Check for SQL keywords in the UID value (case-insensitive)
-        sql_keywords = [
-            'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE',
-            'UNION', 'FROM', 'WHERE', 'AND', 'OR', 'LIKE', 'BETWEEN', 'IN', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT'
-        ]
         uid_value_lower = uid_value.lower()
         features['has_sql_keywords'] = int(any(keyword.lower() in uid_value_lower for keyword in sql_keywords))
-
-    # Check for SQL keywords in the URL
-    url_params = urllib.parse.parse_qs(urllib.parse.urlparse(request_url).query)
-    for param_values in url_params.values():
-        if isinstance(param_values, list):
-            for param_value in param_values:
-                for keyword in sql_keywords:
-                    if keyword.lower() in param_value.lower():
-                        features['has_sql_keywords'] = 1
-                        break
-                if features['has_sql_keywords'] == 1:
-                    break
-            if features['has_sql_keywords'] == 1:
-                break
 
     # Check for XSS payload in URL and headers (not in the body, as per your request)
     xss_patterns = [
@@ -137,7 +124,6 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         r'navigator\.sendBeacon',     # navigator.sendBeacon
         r'importScripts',             # importScripts
         r'`',                         # `
-        r'xss',                       # xss
     ]
     features['has_xss_payload'] = detect_xss_payload(request_url.lower(), str(request_headers), xss_patterns)
 
@@ -174,8 +160,7 @@ with open(csv_file, "w", newline='', encoding='utf-8') as f:
     writer.writeheader()
 
     for request_method, request_url, request_headers, request_body_params, response_status, response_time, response_body, response_headers in result_har:
-        features = analyze_request_har(request_method, request_url, request_headers, request_body_params, response_status, response_time)
+        features = analyze_request_har(request_method, request_url, request_headers, request_body_params, response_status, response_time, sql_keywords)
         writer.writerow(features)
 
 print(f"CSV file '{csv_file}' has been successfully created with analyzed HTTP request data from HAR file including security analysis for XSS, SQLi, and CSRF.")
-
