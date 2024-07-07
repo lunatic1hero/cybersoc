@@ -15,7 +15,7 @@ def parse_har(har_file):
         for entry in har_data['log']['entries']:
             request = entry['request']
             response = entry['response']
-            request_url = urllib.parse.unquote(request['url'])  # Decode URL
+            request_url = urllib.parse.unquote(request['url'])  # Decode URL once
             request_method = request['method']
             request_headers = {header['name']: header['value'] for header in request['headers']}
             request_body_params = request.get('postData', {}).get('params', [])
@@ -138,7 +138,12 @@ def detect_xss_payload(request_url, request_headers, xss_patterns):
     Detects XSS payloads in the request URL and headers using specified patterns.
     '''
     # Decode URL-encoded payloads in the request URL
-    decoded_url = urllib.parse.unquote(request_url)
+    decoded_url = request_url
+    while True:
+        temp_decoded_url = urllib.parse.unquote(decoded_url)
+        if temp_decoded_url == decoded_url:
+            break
+        decoded_url = temp_decoded_url
 
     # Check XSS patterns in URL and headers
     for pattern in xss_patterns:
