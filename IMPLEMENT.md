@@ -1,6 +1,5 @@
 # cybersoc
-building a web application firewall is build to prevent attacks like sql-injection ........
-
+building a web application firewall to prevent attacks like sql-injection and xss. 
 
 
 
