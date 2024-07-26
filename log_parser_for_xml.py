@@ -1,4 +1,3 @@
-#from rawweb import RawWeb
 from xml.etree import ElementTree as ET
 import urllib.parse as urlparse
 import base64
@@ -8,9 +7,7 @@ import re
 log_path = 'demo_burp.log'
 
 def parse_log(log_path):
-    '''
-    Parses the Burp Suite log XML file and returns a dictionary of request and response pairs.
-    '''
+   
     result = {}
     try:
         tree = ET.parse(log_path)
@@ -27,9 +24,7 @@ def parse_log(log_path):
     return result
 
 def extract_headers(rawreq):
-    '''
-    Extracts headers, method, body, and path from a raw HTTP request.
-    '''
+   
     headers = {}
     body = ""
     try:
@@ -57,9 +52,7 @@ def extract_headers(rawreq):
     return headers, method, body, path
 
 def analyze_request(rawreq):
-    '''
-    Analyzes the raw request and extracts features related to common attacks.
-    '''
+  
     headers, method, body, path = extract_headers(rawreq)
 
     # Features related to potential attacks
@@ -81,10 +74,10 @@ def analyze_request(rawreq):
 
     return features
 
-# Parse Burp Suite log and extract requests/responses
+# Parsing Burp Suite log and extract requests/responses
 result = parse_log(log_path)
 
-# Open the CSV file for writing
+# Opening the CSV file for writing
 csv_file = 'http_log1.csv'
 with open(csv_file, "w", newline='', encoding='utf-8') as f:
     fieldnames = ['method', 'path', 'headers', 'body', 'body_length', 'num_commas', 'num_hyphens', 'num_brackets', 'has_sql_keywords', 'has_xss_payload', 'has_csrf_token', 'has_double_quotes']
