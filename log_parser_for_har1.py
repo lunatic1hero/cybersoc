@@ -3,7 +3,7 @@ import csv
 import re
 import urllib.parse
 
-har_file = 'tester_of.har'  # Replace with your HAR file path
+har_file = 'tester_of.har'  # Replace with your HAR file path in your system
 
 def parse_har(har_file):
     '''
@@ -29,7 +29,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     '''
     Analyzes the HTTP request from HAR file and extracts features related to common attacks.
     '''
-    # Initialize features with default values
+    # Initialising features with default values
     features = {
         'method': request_method,
         'path': request_url,
@@ -46,7 +46,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         # Add more features as needed based on your specific WAF requirements
     }
 
-    # Check for SQL keywords
+    # Checking for SQL keywords
     if request_body:
         sql_keywords = [
             'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE',
@@ -55,7 +55,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         features['has_sql_keywords'] = int(any(re.search(r'\b({})\b'.format('|'.join(sql_keywords)), request_body, re.IGNORECASE)))
         features['has_sql_keywords'] |= detect_sqli_payload(request_url, request_body)
 
-    # Check for XSS payload in both URL and body
+    # Checking for XSS payload in both URL and body
     xss_patterns = [
         r'<script',                # <script
         r'alert\(',                # alert(
@@ -89,12 +89,12 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     ]
     features['has_xss_payload'] = detect_xss_payload(request_url.lower(), request_body.lower(), xss_patterns)
 
-    # Check for CSRF token presence
+    # Checking for CSRF token presence
     csrf_keywords = ['csrf_token', 'anti_csrf_token', 'xsrf_token']  # Add other CSRF token keywords as needed
     csrf_pattern = r'\b({})\b'.format('|'.join(csrf_keywords))
     features['has_csrf_token'] = int(any(re.search(csrf_pattern, request_body.lower()) or key.lower() in request_headers for key in csrf_keywords))
 
-    # Check for double quotes
+    # Checking for double quotes
     features['has_double_quotes'] = int('"' in request_body)
 
     return features
@@ -117,7 +117,7 @@ def detect_sqli_payload(request_url, request_body):
     '''
     Detects SQLi payloads in the request URL and body using specified patterns.
     '''
-    # Decode URL-encoded payloads in the request URL and body
+    # Decoding URL-encoded payloads in the request URL and body
     decoded_url = urllib.parse.unquote(request_url)
     decoded_body = urllib.parse.unquote(request_body)
 
@@ -145,16 +145,16 @@ def detect_sqli_payload(request_url, request_body):
         r'\bLIMIT\b',                   # LIMIT ...
     ]
 
-    # Check SQLi patterns in decoded URL and body
+    # Checking SQLi patterns in decoded URL and body
     for pattern in sqli_patterns:
         if re.search(pattern, decoded_url, re.IGNORECASE) or re.search(pattern, decoded_body, re.IGNORECASE):
             return 1
     return 0
 
-# Parse HAR file and extract requests/responses
+# Parsing HAR file and extract requests/responses
 result_har = parse_har(har_file)
 
-# Open the CSV file for writing
+# Opening the CSV file for writing
 csv_file = 'http_log_with_security_analysis.csv'
 with open(csv_file, "w", newline='', encoding='utf-8') as f:
     fieldnames = ['method', 'path', 'headers', 'body', 'body_length', 'num_commas', 'num_hyphens', 'num_brackets', 'has_sql_keywords', 'has_xss_payload', 'has_csrf_token', 'has_double_quotes']
