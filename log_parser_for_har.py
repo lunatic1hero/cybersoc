@@ -29,7 +29,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     '''
     Analyzes the HTTP request from HAR file and extracts features related to common attacks.
     '''
-    # Initialize features with default values
+    # Initialising features with default values
     features = {
         'method': request_method,
         'path': request_url,
@@ -46,7 +46,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         # Add more features as needed based on your specific WAF requirements
     }
 
-    # Check if request_body is not None or empty
+    # Checking if request_body is not None or empty
     if request_body:
         # Features related to potential attacks
         features.update({
@@ -59,10 +59,10 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
 
     return features
 
-# Parse HAR file and extract requests/responses
+# Parsing HAR file and extract requests/responses
 result_har = parse_har(har_file)
 
-# Open the CSV file for writing
+# Opening the CSV file for writing
 csv_file = 'http_log_from_har.csv'
 with open(csv_file, "w", newline='', encoding='utf-8') as f:
     fieldnames = ['method', 'path', 'headers', 'body', 'body_length', 'num_commas', 'num_hyphens', 'num_brackets', 'has_sql_keywords', 'has_xss_payload', 'has_csrf_token', 'has_double_quotes']
