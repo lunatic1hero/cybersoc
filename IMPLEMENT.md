@@ -8,7 +8,7 @@ To deploy this Web Application Firewall (WAF), follow these steps:
 
 1.Create the Directory Structure
 *Create a main directory named WAF.
-*Inside the WAF directory, create four sub-directories: data, models, notebook, and scripts.
+*Inside the WAF directory, create four sub-directories: data, models, notebooks, and scripts.
 
 
 The structure should look like this:
