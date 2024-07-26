@@ -5,7 +5,7 @@ from mitmproxy import http
 import pandas as pd
 from pycaret.clustering import load_model, predict_model
 
-# Define SQL keywords and XSS patterns globally
+# Defining SQL keywords and XSS patterns globally
 sql_keywords = [
     'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE',
     'UNION', 'FROM', 'WHERE', 'AND', 'OR', 'LIKE', 'BETWEEN', 'IN', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT'
@@ -22,7 +22,7 @@ xss_patterns = [
     r'document\.referrer', r'navigator\.sendBeacon', r'importScripts', r'`'
 ]
 
-# Load the K-Means model
+# Loading the K-Means model
 model = load_model('models/kmeans_model')
 
 def parse_request(flow: http.HTTPFlow):
@@ -32,7 +32,7 @@ def parse_request(flow: http.HTTPFlow):
     request_headers = {k: v for k, v in request.headers.items()}
     request_body = request.get_text()
     
-    # Extract UID value if present
+    # Extracting UID value if present
     uid_value = None
     if request_body:
         for param in request_body.split('&'):
@@ -40,7 +40,7 @@ def parse_request(flow: http.HTTPFlow):
                 uid_value = param.split('=')[1]
                 break
     
-    # Extract features
+    # Extracting features
     features = {
         'method': request_method,
         'path': request_url,
@@ -65,27 +65,27 @@ def parse_request(flow: http.HTTPFlow):
     return features
 
 def response(flow: http.HTTPFlow):
-    # Update the response details
+    # Updating the response details
     response = flow.response
     features = parse_request(flow)
     features['response_status'] = response.status_code
     features['response_time'] = flow.response.timestamp_end - flow.request.timestamp_start
     
-    # Create a DataFrame with the new request
+    # Creating a DataFrame with the new request
     new_request_df = pd.DataFrame([features])
     new_request_df['nature'] = 'new request'
     
-    # Load the existing clustered data
+    # Loading the existing clustered data
     clustered_data = pd.read_csv('data/clustered_results_with_features.csv')
     
-    # Predict the cluster for the new request
+    # Predicting the cluster for the new request
     prediction = predict_model(model, data=new_request_df)
     new_request_df['Cluster'] = prediction['Cluster'].values[0]
     
-    # Append the new request to the existing clustered data
+    # Appending the new request to the existing clustered data
     updated_data = clustered_data.append(new_request_df, ignore_index=True)
     
-    # Check if the new cluster has the highest number of requests
+    # Checking if the new cluster has the highest number of requests
     cluster_counts = updated_data['Cluster'].value_counts()
     new_cluster = new_request_df['Cluster'].values[0]
     if cluster_counts[new_cluster] < cluster_counts.max():
