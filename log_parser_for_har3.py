@@ -29,7 +29,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     '''
     Analyzes the HTTP request from HAR file and extracts features related to common attacks.
     '''
-    # Initialize features with default values
+    # Initialising features with default values
     features = {
         'method': request_method,
         'path': request_url,
@@ -49,7 +49,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         'has_csrf_token': 0,
     }
 
-    # Extract UID value from request_body_params
+    # Extracting UID value from request_body_params
     uid_value = None
     if isinstance(request_body_params, list):
         for param in request_body_params:
@@ -57,7 +57,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
                 uid_value = param.get('value')
                 break
 
-    # Add debugging output to trace where the issue occurs
+    # Adding debugging output to trace where the issue is occuring
     print(f"Analyzing request: {request_method} {request_url}")
     print(f"Request headers: {request_headers}")
     print(f"Request body params: {request_body_params}")
@@ -68,7 +68,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     else:
         print(f"UID value is '{uid_value}'")
 
-    # Count characters in UID value
+    # Counting characters in UID value
     if uid_value:
         features['body'] = uid_value
         features['body_length'] = len(uid_value)
@@ -81,7 +81,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         features['num_braces'] = uid_value.count('{') + uid_value.count('}')
         features['num_spaces'] = uid_value.count(' ')
 
-        # Check for SQL keywords in the UID value (case-insensitive)
+        # Checking for SQL keywords in the UID value 
         sql_keywords = [
             'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE',
             'UNION', 'FROM', 'WHERE', 'AND', 'OR', 'LIKE', 'BETWEEN', 'IN', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT'
@@ -89,7 +89,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
         uid_value_lower = uid_value.lower()
         features['has_sql_keywords'] = int(any(keyword.lower() in uid_value_lower for keyword in sql_keywords))
 
-    # Check for XSS payload in URL and headers (not in the body, as per your request)
+    # Checking for XSS payload in URL and headers (not in the body, as per your request)
     xss_patterns = [
         r'<script',                # <script
         r'alert\(',                # alert(
@@ -123,7 +123,7 @@ def analyze_request_har(request_method, request_url, request_headers, request_bo
     ]
     features['has_xss_payload'] = detect_xss_payload(request_url.lower(), str(request_headers), xss_patterns)
 
-    # Check for CSRF token presence in headers
+    # Checking for CSRF token presence in headers
     csrf_keywords = ['csrf_token', 'anti_csrf_token', 'xsrf_token']  # Add other CSRF token keywords as needed
     csrf_pattern = r'\b({})\b'.format('|'.join(csrf_keywords))
     features['has_csrf_token'] = int(any(re.search(csrf_pattern, str(request_headers).lower()) for key in csrf_keywords))
@@ -134,19 +134,19 @@ def detect_xss_payload(request_url, request_headers, xss_patterns):
     '''
     Detects XSS payloads in the request URL and headers using specified patterns.
     '''
-    # Decode URL-encoded payloads in the request URL
+    # Decoding URL-encoded payloads in the request URL
     decoded_url = urllib.parse.unquote(request_url)
 
-    # Check XSS patterns in URL and headers
+    # Checking XSS patterns in URL and headers
     for pattern in xss_patterns:
         if re.search(pattern, decoded_url, re.IGNORECASE) or re.search(pattern, request_headers, re.IGNORECASE):
             return 1
     return 0
 
-# Parse HAR file and extract requests/responses
+# Parsing HAR file and extract requests/responses
 result_har = parse_har(har_file)
 
-# Open the CSV file for writing
+# Opening the CSV file for writing
 csv_file = 'http_log_with_security_analysis.csv'
 with open(csv_file, "w", newline='', encoding='utf-8') as f:
     fieldnames = ['method', 'path', 'headers', 'body', 'body_length', 'num_commas', 'num_hyphens', 'num_brackets',
