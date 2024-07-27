@@ -44,7 +44,7 @@ The implement section provides detailed instructions for implementing the WAF pr
 
 Log parsers are tools used to process and analyze logs. In this project, we have two types of log parsers:
 - *XML Format Parser*: This parser is designed to work with logs in XML format.
-- *HAR Format Parser*: The primary parser used in this project, compatible with R format logs, which are extensively used due to the availability of large datasets.
+- *HAR Format Parser*: The primary parser used in this project, compatible with HAR format logs, which are extensively used due to the availability of large datasets.
 
 ### What are Request Logs?
 
