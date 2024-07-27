@@ -54,7 +54,7 @@ Request logs are records of requests made to a web application. In this project,
 
 ### Sources
 
-The sources for the log parsers and request logs were inspired by various YouTube tutorials and open-source repositories.
+The log parsers were designed with the help of files available in this section.
 
 
 
