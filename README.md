@@ -1,9 +1,6 @@
 --------->if you dont want to know about the process then you can directly read IMPLEMENT.md file
 
-now let us understand how did i do the whole project from beginning to ending.
-Sure! Based on the details you've provided, here's a draft for your README file:
 
----
 
 # WAF Project - Web Application Firewall
 
