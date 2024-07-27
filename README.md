@@ -28,7 +28,7 @@ The proxy interceptor uses mitmproxy to intercept web requests and analyze them 
 
 ## Implementation Details
 
-For detailed instructions on implementing this project, please refer to the [IMPLEMENT.md](implement.md) file in the repository.
+For detailed instructions on implementing this project, please refer to the IMPLEMENT.md file in the repository.
 
 ## FAQ
 
